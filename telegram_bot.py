@@ -21,7 +21,7 @@ class ChatGPT3TelegramBot:
         self.config = config
         self.openai = openai
         self.disallowed_message = "Sorry, you are not allowed to use this bot. You can check out the source code at " \
-                                  "https://github.com/n3d1117/chatgpt-telegram-bot"
+                                  "https://github.com/txsing/chatgpt-telegram-bot-python"
 
     async def help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """
@@ -30,7 +30,7 @@ class ChatGPT3TelegramBot:
         await update.message.reply_text("/reset - Reset conversation\n"
                                         "/image <prompt> - Generate image\n"
                                         "/help - Help menu\n\n"
-                                        "Open source at https://github.com/n3d1117/chatgpt-telegram-bot",
+                                        "Open source at https://github.com/txsing/chatgpt-telegram-bot-python",
                                         disable_web_page_preview=True)
 
     async def reset(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -42,7 +42,7 @@ class ChatGPT3TelegramBot:
             await self.send_disallowed_message(update, context)
             return
 
-        logging.info(f'Resetting the conversation for user {update.message.from_user.name}...')
+        logging.info(f'Resetting the conversation for user: {update.message.from_user.name}, chat_id: {update.effective_chat.id}...')
         chat_id = update.effective_chat.id
         self.openai.reset_chat_history(chat_id=chat_id)
         await context.bot.send_message(chat_id=chat_id, text='Done!')
@@ -81,16 +81,20 @@ class ChatGPT3TelegramBot:
         """
         React to incoming messages and respond accordingly.
         """
+        if not update.message.text.startswith('/ask'):
+            return
+
         if not self.is_allowed(update):
             logging.warning(f'User {update.message.from_user.name} is not allowed to use the bot')
             await self.send_disallowed_message(update, context)
             return
 
-        logging.info(f'New message received from user {update.message.from_user.name}')
         chat_id = update.effective_chat.id
+        logging.info(f'New message received from user {update.message.from_user.name}, chat_id: {chat_id}')
 
         await context.bot.send_chat_action(chat_id=chat_id, action=constants.ChatAction.TYPING)
-        response = self.openai.get_chat_response(chat_id=chat_id, query=update.message.text)
+        query_text = update.message.text.replace("/ask","")
+        response = self.openai.get_chat_response(chat_id=chat_id, query=query_text)
         await context.bot.send_message(
             chat_id=chat_id,
             reply_to_message_id=update.message.message_id,
@@ -136,7 +140,8 @@ class ChatGPT3TelegramBot:
         application.add_handler(CommandHandler('help', self.help))
         application.add_handler(CommandHandler('image', self.image))
         application.add_handler(CommandHandler('start', self.help))
-        application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), self.prompt))
+        application.add_handler(CommandHandler('ask', self.prompt))
+        #application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), self.prompt))
 
         application.add_error_handler(self.error_handler)
 
