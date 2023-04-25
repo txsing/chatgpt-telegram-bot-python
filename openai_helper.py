@@ -39,6 +39,7 @@ class OpenAIHelper:
                 max_tokens=self.config['max_tokens'],
                 presence_penalty=self.config['presence_penalty'],
                 frequency_penalty=self.config['frequency_penalty'],
+                request_timeout=24
             )
 
             if len(response.choices) > 0:

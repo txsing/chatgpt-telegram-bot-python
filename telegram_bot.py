@@ -18,6 +18,7 @@ class ChatGPT3TelegramBot:
         :param config: A dictionary containing the bot configuration
         :param openai: OpenAIHelper object
         """
+        self.last_msg = 'hello'
         self.config = config
         self.openai = openai
         self.disallowed_message = "Sorry, you are not allowed to use this bot. You can check out the source code at " \
@@ -46,6 +47,28 @@ class ChatGPT3TelegramBot:
         chat_id = update.effective_chat.id
         self.openai.reset_chat_history(chat_id=chat_id)
         await context.bot.send_message(chat_id=chat_id, text='Done!')
+
+    async def resend(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """
+        Resets the conversation.
+        """
+        if not self.is_allowed(update):
+            logging.warning(f'User {update.message.from_user.name} is not allowed to reset the conversation')
+            await self.send_disallowed_message(update, context)
+            return
+        chat_id = update.effective_chat.id
+        logging.info(f'Resend message from user {update.message.from_user.name}, chat_id: {chat_id}')
+
+        await context.bot.send_chat_action(chat_id=chat_id, action=constants.ChatAction.TYPING)
+        query_text = self.last_msg
+        response = self.openai.get_chat_response(chat_id=chat_id, query=query_text)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            reply_to_message_id=update.message.message_id,
+            text=response,
+            parse_mode=constants.ParseMode.MARKDOWN
+        )
+
 
     async def image(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
@@ -81,7 +104,7 @@ class ChatGPT3TelegramBot:
         """
         React to incoming messages and respond accordingly.
         """
-        if not update.message.text.startswith('/ask'):
+        if not (update.message.text.startswith('/ask')):
             return
 
         if not self.is_allowed(update):
@@ -94,6 +117,7 @@ class ChatGPT3TelegramBot:
 
         await context.bot.send_chat_action(chat_id=chat_id, action=constants.ChatAction.TYPING)
         query_text = update.message.text.replace("/ask","")
+        self.last_msg = query_text
         response = self.openai.get_chat_response(chat_id=chat_id, query=query_text)
         await context.bot.send_message(
             chat_id=chat_id,
