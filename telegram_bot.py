@@ -161,6 +161,7 @@ class ChatGPT3TelegramBot:
             .build()
 
         application.add_handler(CommandHandler('reset', self.reset))
+        application.add_handler(CommandHandler('resend', self.resend))
         application.add_handler(CommandHandler('help', self.help))
         application.add_handler(CommandHandler('image', self.image))
         application.add_handler(CommandHandler('start', self.help))
